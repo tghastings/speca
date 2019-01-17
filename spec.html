@@ -1,0 +1,114 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <title>Spectrum App</title>
+
+</head>
+
+<body>
+  <div style="width:95%;">
+    <canvas id="canvas"></canvas>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
+</body>
+<script>
+  // On Load
+  window.onload = function () {
+    var ctx = document.getElementById('canvas').getContext('2d');
+    window.myLine = new Chart(ctx, config);
+  };
+  // WS
+  var specApp = {};
+  ws = new WebSocket("ws://10.5.9.83:3001", [
+    'pub.sp.nanomsg.org'
+  ]);
+  ws.onopen = function () {
+    console.log('ws connected');
+    specApp.ws = ws;
+  };
+  ws.onerror = function () {
+    console.log('ws error');
+  };
+  ws.onclose = function () {
+    console.log('ws closed');
+  };
+  ws.onmessage = function (evt) {
+    var reader = new FileReader() // handle binary messages
+    reader.addEventListener('loadend', function () {
+      var result = reader.result;
+      //console.log("Got data: " + result);
+      data = JSON.parse(result);
+      addData(data.x, data.y)
+    });
+    reader.readAsText(evt.data);
+  };
+  //
+  var config = {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'RTL-SDR',
+        data: [],
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: false,
+      elements: {
+        point: {
+          radius: 0
+        }
+      },
+      title: {
+        display: true,
+        text: 'Spectrum'
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+      },
+      hover: {
+        mode: 'nearest',
+        intersect: true
+      },
+      scales: {
+        xAxes: [{
+          display: true,
+          scaleLabel: {
+            display: true,
+            labelString: 'Frequency (MHz)'
+          }
+        }],
+        yAxes: [{
+          display: true,
+          scaleLabel: {
+            display: true,
+            labelString: 'dBW'
+          }
+        }]
+      }
+    }
+  };
+  function addData(datax, datay) {
+    config.data.labels = datax
+    if (config.data.datasets.length > 0) {
+      config.data.datasets.forEach(function (dataset) {
+        dataset.data = datay;
+      });
+      window.myLine.update();
+    }
+  }
+  function removeData() {
+    config.data.datasets[0].data = [];
+    config.data.labels = []
+    window.myLine.update();
+  }
+</script>
+
+</html>
